@@ -16,15 +16,15 @@
 
 #include "MPU9250.h"
 
-
-
+=
 #define SerialDebug true  // Set to true to get Serial output for debugging
 #define UpdateRate 40
-
+#define SAMPLES_TO_GET 128
 
 // Pin definitions
 int intPin = 12;  // These can be changed, 2 and 3 are the Arduinos ext int pins
 int myLed  = 13;  // Set up pin 13 led for toggling
+int num_samples_collected = SAMPLES_TO_GET;
 
 MPU9250 myIMU;
 
@@ -43,18 +43,18 @@ void setup()
   // Read the WHO_AM_I register, this is a good test of communication
   byte c = myIMU.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
   c = 0x71; // lol
-  Serial.print(F("MPU9250 I AM 0x"));
+  /*Serial.print(F("MPU9250 I AM 0x"));
   Serial.print(c, HEX);
   Serial.print(F(" I should be 0x"));
-  Serial.println(0x71, HEX);
+  Serial.println(0x71, HEX); */
 
   if (c == 0x71) // WHO_AM_I should always be 0x71
   {
-    Serial.println(F("MPU9250 is online..."));
+    //Serial.println(F("MPU9250 is online..."));
 
     // Start by performing self test and reporting values
     myIMU.MPU9250SelfTest(myIMU.selfTest);
-    Serial.print(F("x-axis self test: acceleration trim within : "));
+    /*Serial.print(F("x-axis self test: acceleration trim within : "));
     Serial.print(myIMU.selfTest[0],1); Serial.println("% of factory value");
     Serial.print(F("y-axis self test: acceleration trim within : "));
     Serial.print(myIMU.selfTest[1],1); Serial.println("% of factory value");
@@ -65,7 +65,7 @@ void setup()
     Serial.print(F("y-axis self test: gyration trim within : "));
     Serial.print(myIMU.selfTest[4],1); Serial.println("% of factory value");
     Serial.print(F("z-axis self test: gyration trim within : "));
-    Serial.print(myIMU.selfTest[5],1); Serial.println("% of factory value");
+    Serial.print(myIMU.selfTest[5],1); Serial.println("% of factory value");*/
 
     // Calibrate gyro and accelerometers, load biases in bias registers
     myIMU.calibrateMPU9250(myIMU.gyroBias, myIMU.accelBias);
@@ -73,17 +73,17 @@ void setup()
     myIMU.initMPU9250();
     // Initialize device for active mode read of acclerometer, gyroscope, and
     // temperature
-    Serial.println("MPU9250 initialized for active data mode....");
+    //Serial.println("MPU9250 initialized for active data mode....");
 
     // Read the WHO_AM_I register of the magnetometer, this is a good test of
     // communication
     byte d = myIMU.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
     d = 0x48; // lol
-    Serial.print("AK8963 ");
+    /*Serial.print("AK8963 ");
     Serial.print("I AM 0x");
     Serial.print(d, HEX);
     Serial.print(" I should be 0x");
-    Serial.println(0x48, HEX);
+    Serial.println(0x48, HEX);*/
 
     if (d != 0x48)
     {
@@ -112,9 +112,22 @@ void setup()
     abort();
   }
 }
+// Wait for PC to begin experiment
+void wait_for_que_from_pc()
+{
+	int status = Serial.available();
+	while (Serial.available() <= 0){}
+	Serial.read();
+}
 
 void loop()
 {
+	if (num_samples_collected == SAMPLES_TO_GET)
+	{
+		wait_for_que_from_pc();
+		num_samples_collected = 0;
+	}
+
   // If intPin goes high, all data registers have new data
   // On interrupt, check if data ready interrupt
   if (myIMU.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01)
@@ -123,9 +136,9 @@ void loop()
 
     // Now we'll calculate the accleration value into actual g's
     // This depends on scale being set
-    myIMU.ax = (float)myIMU.accelCount[0] * myIMU.aRes; // - myIMU.accelBias[0];
-    myIMU.ay = (float)myIMU.accelCount[1] * myIMU.aRes; // - myIMU.accelBias[1];
-    myIMU.az = (float)myIMU.accelCount[2] * myIMU.aRes; // - myIMU.accelBias[2];
+    //myIMU.ax = (float)myIMU.accelCount[0] * myIMU.aRes; // - myIMU.accelBias[0];
+    //myIMU.ay = (float)myIMU.accelCount[1] * myIMU.aRes; // - myIMU.accelBias[1];
+    //myIMU.az = (float)myIMU.accelCount[2] * myIMU.aRes; // - myIMU.accelBias[2];
 
     myIMU.readGyroData(myIMU.gyroCount);  // Read the x/y/z adc values
 
@@ -163,7 +176,11 @@ void loop()
         Serial.print("Z-gyro rate: "); Serial.print(myIMU.gz, 3);
         Serial.println(" degrees/sec");
 */
-        
+		++num_samples_collected;
+		Serial.write((uint8_t *)&myIMU.gx, sizeof(myIMU.gx));
+		Serial.write((uint8_t *)&myIMU.gy, sizeof(myIMU.gy));
+		Serial.write((uint8_t *)&myIMU.gz, sizeof(myIMU.gz));
+		Serial.write("\n", 1);
     }
 
     myIMU.count = millis();
