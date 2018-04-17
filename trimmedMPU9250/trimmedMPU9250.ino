@@ -16,7 +16,7 @@
 
 #include "MPU9250.h"
 
-=
+
 #define SerialDebug true  // Set to true to get Serial output for debugging
 #define UpdateRate 40
 #define SAMPLES_TO_GET 128

@@ -12,12 +12,12 @@ from enum import Enum
 import instrumentDriver
 
 # Experiment configuration settings
-WAIT_FOR_ACCOUSTIC_WAVE_TO_PROPOGATE = 0.1
-START_FREQ = 26000  # in Hz
-END_FREQ = 28000  # in Hz
+WAIT_FOR_ACCOUSTIC_WAVE_TO_PROPOGATE = 0.15
+START_FREQ = 26500  # in Hz
+END_FREQ = 28500  # in Hz
 FREQ_INTERVAL = 10  # in Hz
 FUNCTION_GENERATOR_AMPLITUDE = 8  # in Vpp
-NUM_ACCELERATION_SAMPLES_TO_COLLECT = 128
+NUM_ACCELERATION_SAMPLES_TO_COLLECT = 64 
 
 # Equipment configuration settings
 # SERIAL_PORT 						 = '/dev/cu.usbmodem14131'
@@ -91,14 +91,16 @@ class Experiment:
         while len(measurements[X_PREFIX]) != NUM_ACCELERATION_SAMPLES_TO_COLLECT:
             bytes_available = self.serial_com.inWaiting()
             # print( "bytes_available = %d" % bytes_available )
-            if bytes_available == 0:
+            if bytes_available < 12:
                 self.serial_com.write(DUMMY_CHARACTER)  # trigger measurement
                 time.sleep(WAIT_FOR_ARDUINO_TO_RESPOND)
                 continue
 
             line = self.serial_com.readline()
             line = line.strip()
-            x, y, z = struct.unpack('fff', line)
+	    if len(line) != 12:
+		continue
+	    x, y, z = struct.unpack('fff', line)
             measurements[X_PREFIX].append(x)
             measurements[Y_PREFIX].append(y)
             measurements[Z_PREFIX].append(z)
@@ -155,7 +157,7 @@ class Experiment:
             print("User interrupted - quitting!")
         finally:
             self.measurements_file.close()
-            self.BackupMeasurementsFile()
+            #self.BackupMeasurementsFile()
 
             if self.measuring_device == MeasuringDevice.Arduino:
                 self.serial_com.close()
